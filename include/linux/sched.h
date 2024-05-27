@@ -33,13 +33,14 @@ extern void sched_init(void);	/*初始化调度器*/
 extern void schedule(void);	/*核心调度*/
 extern void trap_init(void);	/*初始化中断和异常处理*/
 #ifndef PANIC
-void panic(const char * str);	/*处理fatal错误*/
+void panic(const char * str);	/*处理fatal错误，内核恐慌*/
 #endif
-extern int tty_write(unsigned minor,char * buf,int count);
+extern int tty_write(unsigned minor,char * buf,int count);	/*写设备？*/
 
-typedef int (*fn_ptr)();
+typedef int (*fn_ptr)();	/*函数指针 int f()*/
 
-struct i387_struct {
+/*保存和恢复浮点计算单元*/
+struct i387_struct {	
 	long	cwd;
 	long	swd;
 	long	twd;
@@ -50,6 +51,7 @@ struct i387_struct {
 	long	st_space[20];	/* 8*10 bytes for each FP-reg = 80 bytes */
 };
 
+/*保存和恢复任务段*/
 struct tss_struct {
 	long	back_link;	/* 16 high bits zero */
 	long	esp0;
@@ -77,35 +79,36 @@ struct tss_struct {
 	struct i387_struct i387;
 };
 
+/*most important!!! The core struct of linux!!!*/
 struct task_struct {
 /* these are hardcoded - don't touch */
-	long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	long counter;
-	long priority;
-	long signal;
-	struct sigaction sigaction[32];
-	long blocked;	/* bitmap of masked signals */
+	long state;			/* -1 unrunnable, 0 runnable, >0 stopped */
+	long counter;			/*时间片记数器*/
+	long priority;			/*优先级*/
+	long signal;			/*收到的信号*/
+	struct sigaction sigaction[32]; /*32种信号处理行为*/
+	long blocked;			/* bitmap of masked signals，信号掩码，用于进程阻塞信号 */
 /* various fields */
-	int exit_code;
-	unsigned long start_code,end_code,end_data,brk,start_stack;
-	long pid,father,pgrp,session,leader;
-	unsigned short uid,euid,suid;
-	unsigned short gid,egid,sgid;
-	long alarm;
-	long utime,stime,cutime,cstime,start_time;
-	unsigned short used_math;
+	int exit_code;	/*task退出状态码*/
+	unsigned long start_code,end_code,end_data,brk,start_stack;	/*代码段开始，代码段结束，数据段结束，brk应该是堆顶，start_stack栈开始*/
+	long pid,father,pgrp,session,leader;				/*进程ID，父进程ID，进程组ID（属于哪个进程组），会话ID，进程组领导者ID*/
+	unsigned short uid,euid,suid;					/*实际用户id,有效用户id(权限检查),保存的用户id（保存执行前的euid）*/
+	unsigned short gid,egid,sgid;					/*同用户id*/
+	long alarm;							/*进程的闹钟时间，进程多少秒后会受到SIGALRM信号*/
+	long utime,stime,cutime,cstime,start_time;			/*用户态执行时间，核心态执行时间，子进程在用户态运行时间，子进程核心态运行时间，开始运行时刻*/
+	unsigned short used_math;					/*是否使用数学协处理器*/
 /* file system info */
-	int tty;		/* -1 if no tty, so it must be signed */
-	unsigned short umask;
-	struct m_inode * pwd;
-	struct m_inode * root;
-	struct m_inode * executable;
-	unsigned long close_on_exec;
-	struct file * filp[NR_OPEN];
+	int tty;	/* -1 if no tty, so it must be signed */	/*进程使用tty终端的子设备号，-1未使用*/
+	unsigned short umask;						/*文件创建属性的掩码*/
+	struct m_inode * pwd;						/*当前工作目录inode指针*/
+	struct m_inode * root;						/*根目前inode指针*/
+	struct m_inode * executable;					/*可执行文件inode指针*/
+	unsigned long close_on_exec;					/*执行时关闭文件句柄位图标志，不太懂，用于标记哪些文件描述符在exec系统调用后应该关闭*/
+	struct file * filp[NR_OPEN];					/*文件结构指针表，最多 32 项。表项号即是文件描述符的值*/
 /* ldt for this task 0 - zero 1 - cs 2 - ds&ss */
-	struct desc_struct ldt[3];
+	struct desc_struct ldt[3];					/*局部描述符表，0空，1代码段，2数据和堆栈段*/
 /* tss for this task */
-	struct tss_struct tss;
+	struct tss_struct tss;						/*任务状态段，每个进程一个*/
 };
 
 /*
@@ -165,7 +168,7 @@ __asm__("str %%ax\n\t" \
 	:"=a" (n) \
 	:"a" (0),"i" (FIRST_TSS_ENTRY<<3))
 /*
- *	switch_to(n) should switch tasks to task nr n, first
+ * switch_to(n) should switch tasks to task nr n, first
  * checking that n isn't the current task, in which case it does nothing.
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
