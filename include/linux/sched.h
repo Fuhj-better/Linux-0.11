@@ -1,11 +1,11 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
-#define NR_TASKS 64
-#define HZ 100
+#define NR_TASKS 64			/*task的数量*/		
+#define HZ 100				/*可能是10ms产生一次时钟中断*/
 
-#define FIRST_TASK task[0]
-#define LAST_TASK task[NR_TASKS-1]
+#define FIRST_TASK task[0]		/*第一个task*/
+#define LAST_TASK task[NR_TASKS-1]	/*最后一个task*/
 
 #include <linux/head.h>
 #include <linux/fs.h>
@@ -13,27 +13,27 @@
 #include <signal.h>
 
 #if (NR_OPEN > 32)
-#error "Currently the close-on-exec-flags are in one word, max 32 files/proc"
+#error "Currently the close-on-exec-flags are in one word, max 32 files/proc" 	/*32位体系结构一个进程最多打开32个文件吗*/
 #endif
 
-#define TASK_RUNNING		0
-#define TASK_INTERRUPTIBLE	1
-#define TASK_UNINTERRUPTIBLE	2
-#define TASK_ZOMBIE		3
-#define TASK_STOPPED		4
+#define TASK_RUNNING		0	/*运行*/
+#define TASK_INTERRUPTIBLE	1	/*中断睡眠状态，收到信号唤醒*/	
+#define TASK_UNINTERRUPTIBLE	2	/*不可中断睡眠，不能被大多数信号唤醒*/
+#define TASK_ZOMBIE		3	/*僵尸进程，已经结束，等待父进程回收*/
+#define TASK_STOPPED		4	/*停止状态，收到了SIGSTOP信号*/
 
 #ifndef NULL
 #define NULL ((void *) 0)
 #endif
 
-extern int copy_page_tables(unsigned long from, unsigned long to, long size);
-extern int free_page_tables(unsigned long from, unsigned long size);
+extern int copy_page_tables(unsigned long from, unsigned long to, long size);	/*复制页表*/
+extern int free_page_tables(unsigned long from, unsigned long size);		/*释放页表*/
 
-extern void sched_init(void);
-extern void schedule(void);
-extern void trap_init(void);
+extern void sched_init(void);	/*初始化调度器*/
+extern void schedule(void);	/*核心调度*/
+extern void trap_init(void);	/*初始化中断和异常处理*/
 #ifndef PANIC
-void panic(const char * str);
+void panic(const char * str);	/*处理fatal错误*/
 #endif
 extern int tty_write(unsigned minor,char * buf,int count);
 
